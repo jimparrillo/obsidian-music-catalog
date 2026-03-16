@@ -2,6 +2,8 @@
 
 An Obsidian plugin for cataloging your vinyl record and CD collection. Scan UPC barcodes or search by title, artist, label, composer, and conductor to automatically pull metadata from Discogs and MusicBrainz, then save a structured note for each release directly in your vault.
 
+![Music Catalog demo](demo.gif)
+
 ## Features
 
 - **Barcode scanning** — scan UPC barcodes with a USB or Bluetooth barcode scanner; the code is captured instantly as if typed into the input field
