@@ -171,8 +171,27 @@ export default class MusicCatalogPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
-    this.addRibbonIcon("disc", "Add Release by Barcode", () => new BarcodeModal(this.app, this).open());
-    this.addCommand({ id: "add-release-by-barcode", name: "Add release by barcode", callback: () => new BarcodeModal(this.app, this).open() });
+
+    // ── Ribbon: open catalog view ─────────────────────────────────────────
+    this.addRibbonIcon("music", "Open Music Catalog", () => {
+      const baseFile = this.findExistingBaseFile();
+      if (baseFile) {
+        this.app.workspace.getLeaf(false).openFile(baseFile);
+      } else {
+        new Notice("Music Catalog.base not found. Create it in Settings → Music Catalog.");
+      }
+    });
+
+    // ── Ribbon: add music ─────────────────────────────────────────────────
+    this.addRibbonIcon("disc", "Add Music", () => new BarcodeModal(this.app, this).open());
+
+    this.addCommand({ id: "add-music", name: "Add music", callback: () => new BarcodeModal(this.app, this).open() });
+    this.addCommand({ id: "open-music-catalog", name: "Open Music Catalog", callback: () => {
+      const baseFile = this.findExistingBaseFile();
+      if (baseFile) this.app.workspace.getLeaf(false).openFile(baseFile);
+      else new Notice("Music Catalog.base not found. Create it in Settings → Music Catalog.");
+    }});
+
     this.addSettingTab(new MusicCatalogSettingTab(this.app, this));
   }
 
@@ -257,8 +276,6 @@ export default class MusicCatalogPlugin extends Plugin {
   }
 
   // ─── Manual Title/Artist/Label Search ────────────────────────────────────
-  // Result cap raised to 30 to handle common opera/classical titles that have
-  // many recordings — e.g. "Aida" which has hundreds of pressings in Discogs.
 
   async searchReleases(params: {
     title: string;
@@ -271,47 +288,20 @@ export default class MusicCatalogPlugin extends Plugin {
     const { title, artist, label, composer, conductor, formatFilter } = params;
     const results: ReleaseData[] = [];
     const seenKeys = new Set<string>();
-
-    const dedupeKey = (r: ReleaseData) =>
-      `${r.album.toLowerCase().trim()}|${(r.artists[0] || "").toLowerCase().trim()}|${r.releaseYear}`;
-
-    const addResult = (r: ReleaseData) => {
-      const key = dedupeKey(r);
-      if (!seenKeys.has(key)) { seenKeys.add(key); results.push(r); }
-    };
-
+    const dedupeKey = (r: ReleaseData) => `${r.album.toLowerCase().trim()}|${(r.artists[0] || "").toLowerCase().trim()}|${r.releaseYear}`;
+    const addResult = (r: ReleaseData) => { const key = dedupeKey(r); if (!seenKeys.has(key)) { seenKeys.add(key); results.push(r); } };
     if (this.settings.discogsToken) {
-      try {
-        const dr = await this.searchDiscogs(title, artist, label, composer, conductor, formatFilter);
-        dr.forEach(addResult);
-      } catch (e) { console.warn("Discogs search failed:", e); }
+      try { (await this.searchDiscogs(title, artist, label, composer, conductor, formatFilter)).forEach(addResult); } catch (e) { console.warn("Discogs search failed:", e); }
     }
-
-    try {
-      const mbr = await this.searchMusicBrainz(title, artist, composer, conductor, formatFilter);
-      mbr.forEach(addResult);
-    } catch (e) { console.warn("MusicBrainz search failed:", e); }
-
-    // Cap raised to 30 — common opera/classical titles have many pressings
+    try { (await this.searchMusicBrainz(title, artist, composer, conductor, formatFilter)).forEach(addResult); } catch (e) { console.warn("MusicBrainz search failed:", e); }
     return results.slice(0, 30);
   }
 
-  // ─── Discogs search ───────────────────────────────────────────────────────
-  // per_page raised to 25 so obscure pressings of common titles are reachable.
-
-  async searchDiscogs(
-    title: string,
-    artist: string,
-    label: string,
-    composer: string,
-    conductor: string,
-    formatFilter: "" | "cd" | "lp"
-  ): Promise<ReleaseData[]> {
+  async searchDiscogs(title: string, artist: string, label: string, composer: string, conductor: string, formatFilter: "" | "cd" | "lp"): Promise<ReleaseData[]> {
     const artistTerms = [artist, composer, conductor].filter(Boolean);
     const seen = new Set<string>();
     const results: ReleaseData[] = [];
     const discogsFormat = formatFilter === "cd" ? "CD" : formatFilter === "lp" ? "Vinyl" : "";
-
     const runQuery = async (artistTerm: string) => {
       let url = `https://api.discogs.com/database/search?release_title=${encodeURIComponent(title)}&type=release&per_page=25&token=${this.settings.discogsToken}`;
       if (artistTerm) url += `&artist=${encodeURIComponent(artistTerm)}`;
@@ -319,46 +309,20 @@ export default class MusicCatalogPlugin extends Plugin {
       if (discogsFormat) url += `&format=${encodeURIComponent(discogsFormat)}`;
       const response = await requestUrl({ url, headers: { "User-Agent": "ObsidianMusicCatalog/0.1" } });
       const data = response.json;
-      for (const result of (data.results || [])) {
-        const id = String(result.id);
-        if (seen.has(id)) continue;
-        seen.add(id);
-        results.push(this.parseDiscogsResult(result, ""));
-      }
+      for (const result of (data.results || [])) { const id = String(result.id); if (seen.has(id)) continue; seen.add(id); results.push(this.parseDiscogsResult(result, "")); }
     };
-
-    if (artistTerms.length > 0) {
-      for (const term of artistTerms) {
-        try { await runQuery(term); } catch (e) { console.warn(`Discogs search for "${term}" failed:`, e); }
-      }
-    } else {
-      try { await runQuery(""); } catch (e) { console.warn("Discogs title search failed:", e); }
-    }
-
+    if (artistTerms.length > 0) { for (const term of artistTerms) { try { await runQuery(term); } catch (e) { console.warn(`Discogs search for "${term}" failed:`, e); } } }
+    else { try { await runQuery(""); } catch (e) { console.warn("Discogs title search failed:", e); } }
     return results;
   }
 
-  // ─── MusicBrainz search ───────────────────────────────────────────────────
-  // limit raised to 20 per query to surface deeper results before post-filtering.
-
-  async searchMusicBrainz(
-    title: string,
-    artist: string,
-    composer: string,
-    conductor: string,
-    formatFilter: "" | "cd" | "lp"
-  ): Promise<ReleaseData[]> {
+  async searchMusicBrainz(title: string, artist: string, composer: string, conductor: string, formatFilter: "" | "cd" | "lp"): Promise<ReleaseData[]> {
     const escapedTitle = title.replace(/"/g, '\\"');
     const baseQuery = `release:"${escapedTitle}"`;
-
     const artistTerms = [artist, composer, conductor].filter(Boolean);
-    const queries: string[] = artistTerms.length > 0
-      ? artistTerms.map((t) => `${baseQuery} AND artist:"${t.replace(/"/g, '\\"')}"`)
-      : [baseQuery];
-
+    const queries: string[] = artistTerms.length > 0 ? artistTerms.map((t) => `${baseQuery} AND artist:"${t.replace(/"/g, '\\"')}"`) : [baseQuery];
     const seen = new Set<string>();
     const results: ReleaseData[] = [];
-
     for (let i = 0; i < queries.length; i++) {
       if (i > 0) await sleep(1100);
       try {
@@ -369,12 +333,10 @@ export default class MusicCatalogPlugin extends Plugin {
           if (seen.has(r.id)) continue;
           const release = this.parseMBRelease(r, "");
           if (!matchesFormatFilter(release.format, formatFilter)) continue;
-          seen.add(r.id);
-          results.push(release);
+          seen.add(r.id); results.push(release);
         }
       } catch (e) { console.warn(`MusicBrainz query "${queries[i]}" failed:`, e); }
     }
-
     return results;
   }
 
@@ -383,38 +345,14 @@ export default class MusicCatalogPlugin extends Plugin {
   parseDiscogsResult(result: any, upc: string): ReleaseData {
     let album = result.title || "Unknown Album";
     let artistFromTitle = "";
-    if (album.includes(" - ")) {
-      const parts = album.split(" - ");
-      artistFromTitle = parts[0].trim();
-      album = parts.slice(1).join(" - ").trim();
-    }
+    if (album.includes(" - ")) { const parts = album.split(" - "); artistFromTitle = parts[0].trim(); album = parts.slice(1).join(" - ").trim(); }
     const artists = result.artist ? [result.artist] : artistFromTitle ? [artistFromTitle] : [];
-    return {
-      upc,
-      album: toTitleCase(album),
-      artists: toTitleCaseNames(artists),
-      label: Array.isArray(result.label) ? result.label[0] : result.label || "",
-      catalogNumber: result.catno || "",
-      releaseYear: result.year?.toString() || "",
-      genres: [...(result.genre || []), ...(result.style || [])].slice(0, 5),
-      format: Array.isArray(result.format) ? result.format[0] : result.format || "",
-      coverUrl: result.cover_image || result.thumb || "",
-    };
+    return { upc, album: toTitleCase(album), artists: toTitleCaseNames(artists), label: Array.isArray(result.label) ? result.label[0] : result.label || "", catalogNumber: result.catno || "", releaseYear: result.year?.toString() || "", genres: [...(result.genre || []), ...(result.style || [])].slice(0, 5), format: Array.isArray(result.format) ? result.format[0] : result.format || "", coverUrl: result.cover_image || result.thumb || "" };
   }
 
   parseMBRelease(r: any, upc: string): ReleaseData {
     const artists = (r["artist-credit"] || []).filter((ac: any) => ac.artist).map((ac: any) => ac.artist.name as string);
-    return {
-      upc,
-      album: toTitleCase(r.title || "Unknown Album"),
-      artists: toTitleCaseNames(artists),
-      label: r["label-info"]?.[0]?.label?.name || "",
-      catalogNumber: r["label-info"]?.[0]?.["catalog-number"] || "",
-      releaseYear: r.date ? r.date.substring(0, 4) : "",
-      genres: (r.genres || []).slice(0, 5).map((g: any) => g.name as string),
-      format: r.media?.[0]?.format || "",
-      coverUrl: "",
-    };
+    return { upc, album: toTitleCase(r.title || "Unknown Album"), artists: toTitleCaseNames(artists), label: r["label-info"]?.[0]?.label?.name || "", catalogNumber: r["label-info"]?.[0]?.["catalog-number"] || "", releaseYear: r.date ? r.date.substring(0, 4) : "", genres: (r.genres || []).slice(0, 5).map((g: any) => g.name as string), format: r.media?.[0]?.format || "", coverUrl: "" };
   }
 
   // ─── Note Utilities ───────────────────────────────────────────────────────
@@ -473,7 +411,7 @@ ${coverLine}
   }
 }
 
-// ─── Barcode Input Modal ──────────────────────────────────────────────────────
+// ─── Barcode / Search Input Modal ─────────────────────────────────────────────
 
 class BarcodeModal extends Modal {
   plugin: MusicCatalogPlugin;
@@ -484,15 +422,14 @@ class BarcodeModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
 
-    contentEl.createEl("h2", { text: "Add Release" });
+    contentEl.createEl("h2", { text: "Add Music" });
 
     const tabBar = contentEl.createDiv();
     tabBar.style.cssText = "display:flex; gap:0.5rem; margin-bottom:1.25rem;";
     const barcodeBtn = tabBar.createEl("button", { text: "📷  Scan / UPC" });
-    const searchBtn = tabBar.createEl("button", { text: "🔍  Search by Title" });
-    const activeStyle = "flex:1; padding:0.4rem; background:var(--interactive-accent); color:var(--text-on-accent); border-radius:4px; font-weight:500; cursor:pointer;";
+    const searchBtn  = tabBar.createEl("button", { text: "🔍  Search by Title" });
+    const activeStyle   = "flex:1; padding:0.4rem; background:var(--interactive-accent); color:var(--text-on-accent); border-radius:4px; font-weight:500; cursor:pointer;";
     const inactiveStyle = "flex:1; padding:0.4rem; background:var(--background-secondary); border-radius:4px; cursor:pointer;";
-
     const tabContent = contentEl.createDiv();
 
     const renderBarcodeTab = () => {
@@ -501,7 +438,8 @@ class BarcodeModal extends Modal {
       tabContent.createEl("p", { text: "Scan the UPC barcode with a USB scanner, or type it manually." }).style.cssText = "color:var(--text-muted); font-size:0.9rem; margin:0 0 0.75rem;";
       const inputEl = tabContent.createEl("input", { type: "text", placeholder: "UPC barcode..." });
       inputEl.style.cssText = "width:100%; margin-bottom:0.75rem; font-size:1.1rem; padding:0.5rem;";
-      inputEl.focus();
+      // Delay focus so the modal DOM is fully rendered before focusing
+      setTimeout(() => inputEl.focus(), 50);
       const statusEl = tabContent.createEl("p", { text: "" });
       statusEl.style.cssText = "color:var(--text-muted); min-height:1.5rem; margin:0 0 0.75rem;";
       const lookupBtn = tabContent.createEl("button", { text: "Look Up Release" });
@@ -525,81 +463,58 @@ class BarcodeModal extends Modal {
 
       tabContent.createEl("p", { text: "Title is required. All other fields are optional." }).style.cssText = "color:var(--text-muted); font-size:0.9rem; margin:0 0 0.75rem;";
 
-      const rowStyle = "display:flex; align-items:center; gap:0.75rem; margin-bottom:0.5rem;";
+      const rowStyle   = "display:flex; align-items:center; gap:0.75rem; margin-bottom:0.5rem;";
       const labelStyle = "min-width:80px; font-weight:500; font-size:0.9rem;";
       const inputStyle = "flex:1; padding:0.35rem;";
 
       const row = (parent: HTMLElement, lbl: string, placeholder: string): HTMLInputElement => {
         const wrap = parent.createDiv(); wrap.style.cssText = rowStyle;
         wrap.createEl("label", { text: lbl }).style.cssText = labelStyle;
-        const el = wrap.createEl("input", { type: "text", placeholder });
-        el.style.cssText = inputStyle;
+        const el = wrap.createEl("input", { type: "text", placeholder }); el.style.cssText = inputStyle;
         return el;
       };
 
       const titleEl = row(tabContent, "Title *", "Required");
-      titleEl.focus();
-      const artistEl = row(tabContent, "Artist", "Optional");
-      const labelInputEl = row(tabContent, "Label", "Optional");
+      setTimeout(() => titleEl.focus(), 50);
+      const artistEl    = row(tabContent, "Artist",  "Optional");
+      const labelInputEl = row(tabContent, "Label",   "Optional");
 
       // ── Format filter toggle ──────────────────────────────────────────────
       let formatFilter: "" | "cd" | "lp" = "";
-
-      const filterWrap = tabContent.createDiv();
-      filterWrap.style.cssText = "display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;";
+      const filterWrap = tabContent.createDiv(); filterWrap.style.cssText = "display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;";
       filterWrap.createEl("span", { text: "Format" }).style.cssText = "min-width:80px; font-weight:500; font-size:0.9rem;";
-
-      const filterBtnGroup = filterWrap.createDiv();
-      filterBtnGroup.style.cssText = "display:flex; gap:0.3rem;";
-
-      const filterBtnActive = "padding:0.3rem 0.7rem; border-radius:4px; background:var(--interactive-accent); color:var(--text-on-accent); font-size:0.85rem; cursor:pointer;";
+      const filterBtnGroup = filterWrap.createDiv(); filterBtnGroup.style.cssText = "display:flex; gap:0.3rem;";
+      const filterBtnActive   = "padding:0.3rem 0.7rem; border-radius:4px; background:var(--interactive-accent); color:var(--text-on-accent); font-size:0.85rem; cursor:pointer;";
       const filterBtnInactive = "padding:0.3rem 0.7rem; border-radius:4px; background:var(--background-secondary); font-size:0.85rem; cursor:pointer;";
-
       const anyBtn = filterBtnGroup.createEl("button", { text: "Any" });
-      const cdBtn = filterBtnGroup.createEl("button", { text: "CD Only" });
-      const lpBtn = filterBtnGroup.createEl("button", { text: "LP Only" });
-
-      const updateFilterBtns = () => {
-        anyBtn.style.cssText = formatFilter === "" ? filterBtnActive : filterBtnInactive;
-        cdBtn.style.cssText  = formatFilter === "cd" ? filterBtnActive : filterBtnInactive;
-        lpBtn.style.cssText  = formatFilter === "lp" ? filterBtnActive : filterBtnInactive;
-      };
+      const cdBtn  = filterBtnGroup.createEl("button", { text: "CD Only" });
+      const lpBtn  = filterBtnGroup.createEl("button", { text: "LP Only" });
+      const updateFilterBtns = () => { anyBtn.style.cssText = formatFilter === "" ? filterBtnActive : filterBtnInactive; cdBtn.style.cssText = formatFilter === "cd" ? filterBtnActive : filterBtnInactive; lpBtn.style.cssText = formatFilter === "lp" ? filterBtnActive : filterBtnInactive; };
       updateFilterBtns();
-
       anyBtn.addEventListener("click", () => { formatFilter = ""; updateFilterBtns(); });
       cdBtn.addEventListener("click",  () => { formatFilter = "cd"; updateFilterBtns(); });
       lpBtn.addEventListener("click",  () => { formatFilter = "lp"; updateFilterBtns(); });
 
       // ── Classical / extended section ──────────────────────────────────────
-      const classicalSep = tabContent.createDiv();
-      classicalSep.style.cssText = "display:flex; align-items:center; gap:0.5rem; margin:0.25rem 0 0.5rem;";
+      const classicalSep = tabContent.createDiv(); classicalSep.style.cssText = "display:flex; align-items:center; gap:0.5rem; margin:0.25rem 0 0.5rem;";
       classicalSep.createEl("hr").style.cssText = "flex:1; border:none; border-top:1px solid var(--background-modifier-border);";
       classicalSep.createEl("span", { text: "Classical / Opera / Soundtrack" }).style.cssText = "font-size:0.78rem; color:var(--text-muted); white-space:nowrap;";
       classicalSep.createEl("hr").style.cssText = "flex:1; border:none; border-top:1px solid var(--background-modifier-border);";
 
-      const composerEl = row(tabContent, "Composer", "Optional");
+      const composerEl  = row(tabContent, "Composer",  "Optional");
       const conductorEl = row(tabContent, "Conductor", "Optional");
-
       tabContent.createEl("p", { text: "Composer and conductor are each searched separately and results are merged." }).style.cssText = "color:var(--text-muted); font-size:0.78rem; margin:0.25rem 0 0.75rem;";
 
-      const statusEl = tabContent.createEl("p", { text: "" });
-      statusEl.style.cssText = "min-height:1.2rem; margin:0 0 0.5rem; font-size:0.85rem;";
-
-      const searchActionBtn = tabContent.createEl("button", { text: "Search Releases" });
-      searchActionBtn.style.cssText = "width:100%; padding:0.5rem; margin-bottom:0.75rem;";
-
+      const statusEl = tabContent.createEl("p", { text: "" }); statusEl.style.cssText = "min-height:1.2rem; margin:0 0 0.5rem; font-size:0.85rem;";
+      const searchActionBtn = tabContent.createEl("button", { text: "Search Releases" }); searchActionBtn.style.cssText = "width:100%; padding:0.5rem; margin-bottom:0.75rem;";
       const resultsEl = tabContent.createDiv();
 
       const renderResults = (releases: ReleaseData[]) => {
         resultsEl.empty();
-        if (releases.length === 0) {
-          resultsEl.createEl("p", { text: "No results found. Try different search terms." }).style.cssText = "color:var(--text-muted); font-size:0.9rem;";
-          return;
-        }
+        if (releases.length === 0) { resultsEl.createEl("p", { text: "No results found. Try different search terms." }).style.cssText = "color:var(--text-muted); font-size:0.9rem;"; return; }
         resultsEl.createEl("p", { text: `${releases.length} result${releases.length !== 1 ? "s" : ""} — click to select` }).style.cssText = "font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;";
         releases.forEach((release) => {
-          const card = resultsEl.createDiv();
-          card.style.cssText = "display:flex; gap:0.65rem; padding:0.6rem; border-radius:6px; border:1px solid var(--background-modifier-border); margin-bottom:0.4rem; cursor:pointer; align-items:flex-start;";
+          const card = resultsEl.createDiv(); card.style.cssText = "display:flex; gap:0.65rem; padding:0.6rem; border-radius:6px; border:1px solid var(--background-modifier-border); margin-bottom:0.4rem; cursor:pointer; align-items:flex-start;";
           if (release.coverUrl) { const img = card.createEl("img"); img.src = release.coverUrl; img.alt = "cover"; img.style.cssText = "width:40px; height:auto; border-radius:3px; flex-shrink:0;"; }
           else { const ph = card.createDiv(); ph.style.cssText = "width:40px; height:40px; background:var(--background-secondary); border-radius:3px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:1.2rem;"; ph.createEl("span", { text: "💿" }); }
           const info = card.createDiv(); info.style.cssText = "flex:1; min-width:0;";
@@ -621,21 +536,12 @@ class BarcodeModal extends Modal {
       const doSearch = async () => {
         const title = titleEl.value.trim();
         if (!title) { statusEl.setText("Please enter a title."); statusEl.style.color = "var(--color-red)"; titleEl.focus(); return; }
-        statusEl.style.color = "var(--text-muted)";
-        searchActionBtn.disabled = true; searchActionBtn.setText("Searching…");
+        statusEl.style.color = "var(--text-muted)"; searchActionBtn.disabled = true; searchActionBtn.setText("Searching…");
         const hasClassical = composerEl.value.trim() || conductorEl.value.trim();
         statusEl.setText(hasClassical ? "Running separate queries for composer/conductor — this may take a few seconds…" : "Searching…");
         resultsEl.empty();
-        const releases = await this.plugin.searchReleases({
-          title,
-          artist: artistEl.value.trim(),
-          label: labelInputEl.value.trim(),
-          composer: composerEl.value.trim(),
-          conductor: conductorEl.value.trim(),
-          formatFilter,
-        });
-        statusEl.setText("");
-        searchActionBtn.disabled = false; searchActionBtn.setText("Search Releases");
+        const releases = await this.plugin.searchReleases({ title, artist: artistEl.value.trim(), label: labelInputEl.value.trim(), composer: composerEl.value.trim(), conductor: conductorEl.value.trim(), formatFilter });
+        statusEl.setText(""); searchActionBtn.disabled = false; searchActionBtn.setText("Search Releases");
         renderResults(releases);
       };
 
@@ -663,8 +569,7 @@ class BarcodeModal extends Modal {
     if (release.format) metaEl.createEl("span", { text: release.format }).style.cssText = "color:var(--text-muted); font-size:0.9rem;";
     const cache = this.plugin.app.metadataCache.getFileCache(existing);
     const currentCopies: number = cache?.frontmatter?.copies ?? 1;
-    const copiesInfoEl = contentEl.createDiv();
-    copiesInfoEl.style.cssText = "background:var(--background-secondary); border-radius:6px; padding:0.65rem 0.9rem; margin-bottom:1.25rem; font-size:0.9rem;";
+    const copiesInfoEl = contentEl.createDiv(); copiesInfoEl.style.cssText = "background:var(--background-secondary); border-radius:6px; padding:0.65rem 0.9rem; margin-bottom:1.25rem; font-size:0.9rem;";
     copiesInfoEl.createEl("span", { text: "Currently in catalog: " });
     copiesInfoEl.createEl("strong", { text: `${currentCopies} cop${currentCopies === 1 ? "y" : "ies"}` });
     contentEl.createEl("hr").style.marginBottom = "1rem";
@@ -682,6 +587,7 @@ class BarcodeModal extends Modal {
 
   showConfirmStep(release: ReleaseData) {
     const { contentEl } = this; contentEl.empty();
+
     const previewEl = contentEl.createDiv(); previewEl.style.cssText = "display:flex; gap:1rem; margin-bottom:1.25rem; align-items:flex-start;";
     if (release.coverUrl) { const imgEl = previewEl.createEl("img"); imgEl.src = release.coverUrl; imgEl.alt = "cover"; imgEl.style.cssText = "width:80px; height:auto; border-radius:4px; flex-shrink:0;"; }
     const metaEl = previewEl.createDiv(); metaEl.style.cssText = "display:flex; flex-direction:column; gap:0.2rem;";
@@ -690,29 +596,51 @@ class BarcodeModal extends Modal {
     if (release.label || release.releaseYear) metaEl.createEl("span", { text: [release.label, release.releaseYear].filter(Boolean).join(", ") }).style.cssText = "color:var(--text-muted); font-size:0.9rem;";
     if (release.format) metaEl.createEl("span", { text: release.format }).style.cssText = "color:var(--text-muted); font-size:0.9rem;";
     if (release.genres.length > 0) metaEl.createEl("span", { text: release.genres.join(", ") }).style.cssText = "color:var(--text-muted); font-size:0.9rem;";
+
     contentEl.createEl("hr").style.marginBottom = "1rem";
-    const rowStyle = "display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;";
+
+    const rowStyle   = "display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;";
     const labelStyle = "min-width:80px; font-weight:500;";
+
     const conditionWrap = contentEl.createDiv(); conditionWrap.style.cssText = rowStyle;
     conditionWrap.createEl("label", { text: "Condition" }).style.cssText = labelStyle;
     const conditionEl = conditionWrap.createEl("select"); conditionEl.style.cssText = "flex:1; padding:0.35rem;";
     ["", "Mint (M)", "Near Mint (NM)", "Very Good Plus (VG+)", "Very Good (VG)", "Good Plus (G+)", "Good (G)", "Fair (F)", "Poor (P)"].forEach((c) => { const opt = conditionEl.createEl("option", { text: c || "— select —" }); opt.value = c; });
+
     const acquiredWrap = contentEl.createDiv(); acquiredWrap.style.cssText = rowStyle;
     acquiredWrap.createEl("label", { text: "Acquired" }).style.cssText = labelStyle;
     const acquiredEl = acquiredWrap.createEl("input", { type: "date" }); acquiredEl.style.cssText = "flex:1; padding:0.35rem;"; acquiredEl.value = new Date().toISOString().split("T")[0];
+
     const copiesWrap = contentEl.createDiv(); copiesWrap.style.cssText = rowStyle;
     copiesWrap.createEl("label", { text: "Copies" }).style.cssText = labelStyle;
     const copiesEl = copiesWrap.createEl("input", { type: "number" }); copiesEl.value = "1"; copiesEl.min = "1"; copiesEl.step = "1"; copiesEl.style.cssText = "flex:1; padding:0.35rem;";
+
     const valuationWrap = contentEl.createDiv(); valuationWrap.style.cssText = rowStyle + " margin-bottom:1.25rem;";
     valuationWrap.createEl("label", { text: "Value (USD)" }).style.cssText = labelStyle;
     const valuationPrefix = valuationWrap.createDiv(); valuationPrefix.style.cssText = "display:flex; align-items:center; flex:1; border:1px solid var(--background-modifier-border); border-radius:4px; overflow:hidden;";
     valuationPrefix.createEl("span", { text: "$" }).style.cssText = "padding:0.35rem 0.5rem; background:var(--background-secondary); color:var(--text-muted); font-weight:500; border-right:1px solid var(--background-modifier-border);";
     const valuationEl = valuationPrefix.createEl("input", { type: "number" }); valuationEl.placeholder = "0.00"; valuationEl.min = "0"; valuationEl.step = "0.01"; valuationEl.style.cssText = "flex:1; padding:0.35rem 0.5rem; border:none; background:transparent; outline:none;";
+
     const btnRow = contentEl.createDiv(); btnRow.style.cssText = "display:flex; gap:0.75rem; justify-content:flex-end;";
-    const backBtn = btnRow.createEl("button", { text: "← Back" });
-    const saveBtn = btnRow.createEl("button", { text: "Save Release" }); saveBtn.style.cssText = "background:var(--interactive-accent); color:var(--text-on-accent); padding:0.4rem 1rem; border-radius:4px;";
+    const backBtn        = btnRow.createEl("button", { text: "← Back" });
+    const saveAnotherBtn = btnRow.createEl("button", { text: "Save & Add Another" });
+    const saveBtn        = btnRow.createEl("button", { text: "Save Release" });
+    saveBtn.style.cssText        = "background:var(--interactive-accent); color:var(--text-on-accent); padding:0.4rem 1rem; border-radius:4px;";
+    saveAnotherBtn.style.cssText = "padding:0.4rem 1rem;";
+
     backBtn.addEventListener("click", () => this.showScanStep());
-    saveBtn.addEventListener("click", async () => { saveBtn.disabled = true; saveBtn.setText("Saving..."); await this.plugin.createReleaseNote(release, conditionEl.value, acquiredEl.value, valuationEl.value, copiesEl.value); this.close(); });
+
+    saveBtn.addEventListener("click", async () => {
+      saveBtn.disabled = true; saveBtn.setText("Saving...");
+      await this.plugin.createReleaseNote(release, conditionEl.value, acquiredEl.value, valuationEl.value, copiesEl.value);
+      this.close();
+    });
+
+    saveAnotherBtn.addEventListener("click", async () => {
+      saveAnotherBtn.disabled = true; saveAnotherBtn.setText("Saving...");
+      await this.plugin.createReleaseNote(release, conditionEl.value, acquiredEl.value, valuationEl.value, copiesEl.value);
+      this.showScanStep();
+    });
   }
 
   onClose() { this.contentEl.empty(); }
