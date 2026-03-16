@@ -1,0 +1,660 @@
+/* ── Hints & status ─────────────────────────────────────── */
+.mc-hint {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0 0 0.75rem;
+}
+
+.mc-status {
+  color: var(--text-muted);
+  min-height: 1.5rem;
+  margin: 0 0 0.75rem;
+}
+
+.mc-status-search {
+  color: var(--text-muted);
+  min-height: 1.2rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+}
+
+.mc-status-search.is-error {
+  color: var(--color-red);
+}
+
+/* ── Tab bar ────────────────────────────────────────────── */
+.mc-tab-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.mc-tab-btn {
+  flex: 1;
+  padding: 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+  background: var(--background-secondary);
+}
+
+.mc-tab-btn.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-weight: 500;
+}
+
+/* ── UPC / barcode input ────────────────────────────────── */
+.mc-upc-input {
+  width: 100%;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+  padding: 0.5rem;
+}
+
+.mc-lookup-btn {
+  width: 100%;
+  padding: 0.5rem;
+}
+
+/* ── Form rows ──────────────────────────────────────────── */
+.mc-form-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.mc-form-label {
+  min-width: 80px;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.mc-form-input {
+  flex: 1;
+  padding: 0.35rem;
+}
+
+/* ── Format filter ──────────────────────────────────────── */
+.mc-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.mc-filter-label {
+  min-width: 80px;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.mc-filter-btn-group {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.mc-filter-btn {
+  padding: 0.3rem 0.7rem;
+  border-radius: 4px;
+  background: var(--background-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.mc-filter-btn.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* ── Classical section divider ──────────────────────────── */
+.mc-classical-sep {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.mc-classical-hr {
+  flex: 1;
+  border: none;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.mc-classical-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.mc-classical-note {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+/* ── Search button ──────────────────────────────────────── */
+.mc-search-btn {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Results ────────────────────────────────────────────── */
+.mc-result-count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.mc-result-card {
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  margin-bottom: 0.4rem;
+  cursor: pointer;
+  align-items: flex-start;
+}
+
+.mc-result-card:hover {
+  background: var(--background-secondary);
+}
+
+.mc-result-thumb {
+  width: 40px;
+  height: auto;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.mc-result-thumb-placeholder {
+  width: 40px;
+  height: 40px;
+  background: var(--background-secondary);
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.mc-result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mc-result-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mc-result-meta {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.mc-result-genre {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+/* ── Confirm step — preview ─────────────────────────────── */
+.mc-preview {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  align-items: flex-start;
+}
+
+.mc-preview-img {
+  width: 80px;
+  height: auto;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.mc-preview-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.mc-preview-detail {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ── Confirm step — fields ──────────────────────────────── */
+.mc-field-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.mc-field-label {
+  min-width: 80px;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.mc-field-select {
+  flex: 1;
+  padding: 0.35rem;
+}
+
+.mc-field-input {
+  flex: 1;
+  padding: 0.35rem;
+}
+
+.mc-valuation-wrap {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mc-valuation-prefix {
+  padding: 0.35rem 0.5rem;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  font-weight: 500;
+  border-right: 1px solid var(--background-modifier-border);
+}
+
+.mc-valuation-input {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  border: none;
+  background: transparent;
+  outline: none;
+}
+
+.mc-custom-divider {
+  margin: 0.75rem 0;
+}
+
+/* ── Toggle switch ──────────────────────────────────────── */
+.mc-toggle-outer {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.mc-toggle-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.mc-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--background-modifier-border);
+  border-radius: 22px;
+  transition: background 0.2s;
+}
+
+.mc-toggle-slider.is-on {
+  background: var(--interactive-accent);
+}
+
+.mc-toggle-knob {
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.mc-toggle-slider.is-on .mc-toggle-knob {
+  transform: translateX(18px);
+}
+
+/* ── Button rows ────────────────────────────────────────── */
+.mc-btn-row {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+}
+
+.mc-btn-primary {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+}
+
+.mc-btn-secondary {
+  padding: 0.4rem 1rem;
+}
+
+/* ── Duplicate step ─────────────────────────────────────── */
+.mc-dup-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.mc-dup-emoji {
+  font-size: 1.5rem;
+}
+
+.mc-copies-info {
+  background: var(--background-secondary);
+  border-radius: 6px;
+  padding: 0.65rem 0.9rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.mc-copies-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.mc-copies-label {
+  min-width: 120px;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.mc-copies-input {
+  flex: 1;
+  padding: 0.35rem;
+}
+
+.mc-btn-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.mc-btn-full {
+  width: 100%;
+  padding: 0.5rem;
+}
+
+.mc-btn-full-primary {
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 4px;
+}
+
+/* ── Reorganize modal ───────────────────────────────────── */
+.mc-reorg-hint {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.25rem;
+}
+
+.mc-target-box {
+  background: var(--background-secondary);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+}
+
+.mc-target-heading {
+  font-weight: 600;
+  margin: 0 0 0.4rem;
+}
+
+.mc-target-path {
+  margin: 0 0 0.2rem;
+  color: var(--text-muted);
+}
+
+.mc-target-path-last {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.mc-results-area {
+  min-height: 2rem;
+  margin-bottom: 1rem;
+}
+
+.mc-reorg-btn-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.mc-reorg-cancel-btn {
+  flex: 1;
+  padding: 0.5rem;
+}
+
+.mc-reorg-scan-btn {
+  flex: 1;
+  padding: 0.5rem;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 4px;
+}
+
+.mc-result-box {
+  background: var(--background-secondary);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+}
+
+.mc-result-box-heading {
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+.mc-folder-row {
+  margin-bottom: 0.3rem;
+}
+
+.mc-folder-name {
+  color: var(--text-muted);
+}
+
+.mc-folder-name.is-ok {
+  color: var(--color-green);
+  font-weight: 500;
+}
+
+.mc-folder-ok-badge {
+  color: var(--color-green);
+  font-size: 0.8rem;
+}
+
+.mc-base-path {
+  margin: 0.5rem 0 0;
+  color: var(--text-muted);
+}
+
+.mc-all-ok {
+  margin: 0.75rem 0 0;
+  font-weight: 600;
+  color: var(--color-green);
+}
+
+.mc-proceed-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+}
+
+.mc-proceed-btn {
+  padding: 0.4rem 1rem;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 4px;
+}
+
+/* ── Confirm reorganize ─────────────────────────────────── */
+.mc-reorg-confirm-hint {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.mc-section-label {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.mc-tree-box {
+  background: var(--background-secondary);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-family: monospace;
+  font-size: 0.82rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.8;
+}
+
+.mc-tree-item {
+  color: var(--text-muted);
+}
+
+.mc-tree-indent {
+  padding-left: 1.2rem;
+}
+
+.mc-tree-dest {
+  padding-left: 1.2rem;
+  color: var(--color-green);
+}
+
+.mc-summary-box {
+  background: var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+}
+
+.mc-summary-line {
+  margin: 0 0 0.2rem;
+}
+
+.mc-summary-line-last {
+  margin: 0;
+}
+
+.mc-confirm-btn-row {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+/* ── Settings ───────────────────────────────────────────── */
+.mc-path-preview {
+  background: var(--background-secondary);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.mc-path-heading {
+  font-weight: 600;
+  margin: 0 0 0.4rem;
+}
+
+.mc-path-line {
+  margin: 0 0 0.25rem;
+  color: var(--text-muted);
+}
+
+.mc-path-line-last {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.mc-field-list {
+  margin-bottom: 1rem;
+}
+
+.mc-field-empty {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.mc-field-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  margin-bottom: 0.3rem;
+  background: var(--background-secondary);
+}
+
+.mc-field-name-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.mc-field-name {
+  font-size: 0.9rem;
+}
+
+.mc-type-badge {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  margin-left: 0.5rem;
+}
+
+.mc-field-delete {
+  padding: 0.1rem 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.mc-add-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.mc-add-name-input {
+  flex: 1;
+  padding: 0.35rem;
+}
+
+.mc-add-type-select {
+  padding: 0.35rem;
+}
+
+.mc-add-btn {
+  padding: 0.35rem 0.75rem;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 4px;
+}
