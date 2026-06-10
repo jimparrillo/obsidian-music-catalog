@@ -1,6 +1,6 @@
 {
   "name": "music-catalog",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Obsidian plugin to catalog CDs and vinyl records via barcode lookup",
   "main": "main.js",
   "scripts": {
@@ -10,10 +10,15 @@
   "keywords": [],
   "devDependencies": {
     "@types/node": "^16.11.6",
-    "builtin-modules": "^3.3.0",
     "esbuild": "0.17.3",
     "obsidian": "latest",
     "tslib": "2.4.0",
-    "typescript": "4.7.4"
+    "typescript": "~5.6.3"
+  },
+  "dependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.4.1",
+    "eslint-plugin-obsidianmd": "^0.3.0",
+    "typescript-eslint": "^8.61.0"
   }
 }

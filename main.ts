@@ -141,7 +141,7 @@ function toTitleCaseNames(names: string[]): string[] {
   return names.map((name) => name.split(/(\s+|,\s*)/).map((p) => capitalizeWord(p)).join(""));
 }
 
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
 
 function matchesFormatFilter(format: string, filter: "" | "cd" | "lp"): boolean {
   if (!filter) return true;
@@ -268,7 +268,7 @@ export default class MusicCatalogPlugin extends Plugin {
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, (await this.loadData()) as Partial<MusicCatalogSettings> | null);
     if (!this.settings.customFields) this.settings.customFields = [];
   }
 
@@ -564,7 +564,7 @@ class BarcodeModal extends Modal {
       tabContent.createEl("p", { cls: "mc-hint", text: "Scan the UPC barcode with a USB scanner, or type it manually." });
       const inputEl = tabContent.createEl("input", { type: "text", placeholder: "UPC barcode..." });
       inputEl.addClass("mc-upc-input");
-      setTimeout(() => inputEl.focus(), 50);
+      window.setTimeout(() => inputEl.focus(), 50);
 
       const statusEl = tabContent.createEl("p", { cls: "mc-status", text: "" });
       const lookupBtn = tabContent.createEl("button", { cls: "mc-lookup-btn", text: "Look up release" });
@@ -607,7 +607,7 @@ class BarcodeModal extends Modal {
       };
 
       const titleEl    = row(tabContent, "Title *",   "Required");
-      setTimeout(() => titleEl.focus(), 50);
+      window.setTimeout(() => titleEl.focus(), 50);
       const artistEl    = row(tabContent, "Artist",    "Optional");
       const labelInputEl = row(tabContent, "Label",    "Optional");
 
@@ -631,7 +631,7 @@ class BarcodeModal extends Modal {
       // Classical section
       const classicalSep = tabContent.createDiv({ cls: "mc-classical-sep" });
       classicalSep.createEl("hr", { cls: "mc-classical-hr" });
-      classicalSep.createEl("span", { cls: "mc-classical-label", text: "Classical / Opera / Soundtrack" });
+      classicalSep.createEl("span", { cls: "mc-classical-label", text: "Classical / opera / soundtrack" });
       classicalSep.createEl("hr", { cls: "mc-classical-hr" });
 
       const composerEl  = row(tabContent, "Composer",  "Optional");
@@ -727,7 +727,8 @@ class BarcodeModal extends Modal {
     if (release.format) metaEl.createEl("span", { cls: "mc-preview-detail", text: release.format });
 
     const cache = this.plugin.app.metadataCache.getFileCache(existing);
-    const currentCopies: number = cache?.frontmatter?.copies ?? 1;
+    const rawCopies: unknown = cache?.frontmatter?.copies;
+    const currentCopies: number = typeof rawCopies === "number" ? rawCopies : 1;
     const copiesInfoEl = contentEl.createDiv({ cls: "mc-copies-info" });
     copiesInfoEl.createEl("span", { text: "Currently in catalog: " });
     copiesInfoEl.createEl("strong", { text: `${currentCopies} cop${currentCopies === 1 ? "y" : "ies"}` });
@@ -1065,7 +1066,7 @@ class MusicCatalogSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Scan & reorganize vault")
       .setDesc("Opens a two-step dialog: scans for all release notes, shows what was found, then lets you confirm before moving anything.")
-      .addButton((btn) => btn.setButtonText("Scan vault & reorganize").setWarning().onClick(() => { new ReorganizeModal(this.app, this.plugin).open(); }));
+      .addButton((btn) => { btn.setButtonText("Scan vault & reorganize").onClick(() => { new ReorganizeModal(this.app, this.plugin).open(); }); btn.buttonEl.addClass("mod-warning"); });
 
     containerEl.createEl("hr");
 
